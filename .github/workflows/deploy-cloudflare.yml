@@ -1,0 +1,60 @@
+name: Deploy Cloudflare Worker
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Funciona con la carpeta cloudflare/ suelta O con el .zip subido tal cual al repo
+      - name: Preparar código (descomprime el .zip si hace falta)
+        run: |
+          if [ -d cloudflare ]; then
+            echo "CF_DIR=cloudflare" >> "$GITHUB_ENV"
+          else
+            zipfile=$(ls ./*.zip 2>/dev/null | head -n1)
+            if [ -z "$zipfile" ]; then
+              echo "No encontré la carpeta cloudflare/ ni ningún .zip en la raíz del repo"
+              exit 1
+            fi
+            mkdir -p src
+            unzip -q -o "$zipfile" -d src
+            wr=$(find src -name wrangler.toml | head -n1)
+            if [ -z "$wr" ]; then
+              echo "El zip no contiene el proyecto de Cloudflare"
+              exit 1
+            fi
+            echo "CF_DIR=$(dirname "$wr")" >> "$GITHUB_ENV"
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          cd "$CF_DIR"
+          npm install
+          npx wrangler deploy
+
+      # Opcional: si creaste el secret ACCESS_KEY en GitHub, se sube como clave del servidor
+      - name: Set ACCESS_KEY (opcional)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ACCESS_KEY: ${{ secrets.ACCESS_KEY }}
+        run: |
+          if [ -n "$ACCESS_KEY" ]; then
+            cd "$CF_DIR"
+            printf '%s' "$ACCESS_KEY" | npx wrangler secret put ACCESS_KEY
+          else
+            echo "Sin ACCESS_KEY: el servidor queda abierto (sin clave)"
+          fi
