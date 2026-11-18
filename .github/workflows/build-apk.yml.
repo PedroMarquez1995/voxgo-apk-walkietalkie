@@ -46,7 +46,12 @@ jobs:
         with:
           gradle-version: '8.7'
 
+      # Opcional: la variable VOXGO_SERVER y el secret ACCESS_KEY (si existen) quedan
+      # como valores por defecto de la app. Sin ellas se usa wss://voxgo.pedroxhile.workers.dev
       - name: Build debug APK
+        env:
+          VOXGO_SERVER: ${{ vars.VOXGO_SERVER }}
+          VOXGO_KEY: ${{ secrets.ACCESS_KEY }}
         run: |
           cd "$APP_DIR"
           gradle assembleDebug --no-daemon --stacktrace
