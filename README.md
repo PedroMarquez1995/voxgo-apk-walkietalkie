@@ -1,98 +1,216 @@
-Wavko
+Escritura
+🎙️ Wavko
 Comunicación por voz en movimiento.
-App tipo Zello (push-to-talk): mantén pulsado para hablar, los demás en el canal te escuchan en vivo.
+Wavko es una aplicación de comunicación por voz estilo walkie-talkie, inspirada en Zello. Permite hablar en tiempo real con otras personas mediante canales, utilizando el sistema Push-to-Talk (PTT): mantén pulsado el botón para hablar y suéltalo para dejar de transmitir.
+📑 Tabla de contenidos
+📂 Estructura del proyecto
+🚀 Subir el proyecto a GitHub
+☁️ Configurar Cloudflare
+📱 Compilar la aplicación Android
+🔐 Canales y claves
+⚙️ Cómo funciona
+✨ Novedades de Wavko 2.3
+🔒 Novedades de Wavko 2.2
+🆕 Novedades de Wavko 2.1
+🚀 Novedades de Wavko 2.0
+🛠️ Próximas mejoras
+📂 Estructura del proyecto
 wavko/
-├── cloudflare/                  Servidor en Cloudflare Workers + Durable Objects (recomendado)
-├── android/                     App Android (Kotlin)
-└── .github/workflows/
-    ├── build-apk.yml            Compila el APK
-    └── deploy-cloudflare.yml    Despliega el servidor en Cloudflare
-1. Subir el proyecto a GitHub (sin descomprimir)
-Crea un repositorio y sube el .zip tal cual (Add file → Upload files).
-Crea dos archivos con Add file → Create new file, pegando el contenido de los .yml que vienen aparte:
+├── cloudflare/                  # Servidor Cloudflare Workers + Durable Objects
+├── android/                     # Aplicación Android (Kotlin)
+└── .github/
+    └── workflows/
+        ├── build-apk.yml        # Compilación automática del APK
+        └── deploy-cloudflare.yml # Despliegue del servidor
+🚀 Subir el proyecto a GitHub
+Crea un repositorio nuevo en GitHub.
+Sube el archivo .zip del proyecto directamente mediante Add file → Upload files.
+Crea los siguientes archivos mediante Add file → Create new file, pegando el contenido de los workflows correspondientes:
 .github/workflows/build-apk.yml
 .github/workflows/deploy-cloudflare.yml
-Los workflows descomprimen el zip solos. Si prefieres, también puedes subir las carpetas ya descomprimidas.
-2. Servidor en Cloudflare
-Una sola vez, en tu cuenta de Cloudflare:
-Entra a Workers & Pages en el dashboard y, si te lo pide, elige tu subdominio workers.dev.
-Crea un API Token: My Profile → API Tokens → Create Token → plantilla "Edit Cloudflare Workers".
-Copia tu Account ID (en la página principal de Workers & Pages, barra lateral derecha).
-En tu repo de GitHub, Settings → Secrets and variables → Actions → New repository secret:
-Secret
-Valor
+Los workflows se encargarán de descomprimir el ZIP automáticamente.
+💡 También puedes subir directamente las carpetas del proyecto ya descomprimidas.
+☁️ Configurar Cloudflare
+La configuración inicial se realiza una sola vez desde tu cuenta de Cloudflare.
+1. Crear y configurar el servidor
+Accede a Workers & Pages desde el dashboard de Cloudflare.
+Si es necesario, configura tu subdominio workers.dev.
+Crea un API Token:
+My Profile → API Tokens → Create Token
+Selecciona la plantilla Edit Cloudflare Workers.
+Copia tu Account ID, disponible en la página principal de Workers & Pages, en la barra lateral derecha.
+2. Configurar los secretos de GitHub
+En tu repositorio, dirígete a:
+Settings → Secrets and variables → Actions → New repository secret
+Añade los siguientes secretos:
+Nombre
+Descripción
 CLOUDFLARE_API_TOKEN
-el token del paso 2
+Token generado en Cloudflare.
 CLOUDFLARE_ACCOUNT_ID
-el Account ID del paso 3
-ACCESS_KEY (opcional, recomendado)
-una clave; la app deberá enviarla
-Luego ejecuta Actions → Deploy Cloudflare Worker → Run workflow (también corre en cada push a main). Tu servidor quedará en wss://voxgo.<tu-subdominio>.workers.dev; ese es el valor del campo "Servidor" de la app.
-Cómo funciona: un Durable Object por canal, con la API de hibernación. Con el canal en silencio no gasta cómputo y las conexiones siguen abiertas. Los mensajes WebSocket entrantes se cuentan 20:1 como requests; consulta los límites vigentes del plan gratis en la documentación de Cloudflare.
-Probarlo en tu PC: cd cloudflare && npm install && npx wrangler dev y en la app ws://IP-DE-TU-PC:8787.
-3. Compilar el APK
-Al hacer commit en main, entra en Actions → Build APK → abajo, en Artifacts, descarga wavko-apk (zip con wavko.apk).
-También puedes lanzarlo a mano con Run workflow.
-Si subes un tag (git tag v1.0 && git push --tags), el APK queda en Releases, útil para bajarlo directo desde el celular.
-Instálalo en el teléfono (permite "instalar apps desconocidas"). Es un APK debug, firmado automáticamente, suficiente para uso propio.
-La app ya viene con el servidor wss://voxgo.pedroxhile.workers.dev por defecto (se puede cambiar en el campo "Servidor"). Solo falta elegir un canal (ej. general) y tu nombre.
-Opcional, al compilar: si en GitHub creas la variable WAVKO_SERVER (Settings → Secrets and variables → Actions → Variables) el APK usa esa dirección en vez de la de arriba; y si existe el secret ACCESS_KEY, la clave también queda precargada. Ojo: una clave precargada va dentro del APK, así que no compartas ese APK con quien no deba tenerla.
-Canales y claves
-Crear canal: eliges un nombre libre y, si quieres, una clave. Quedas dentro como primera persona.
-Unirme a canal: escribes el nombre del canal y la clave que te dieron. Si el canal no existe o la clave es incorrecta, la app te lo avisa.
-Para invitar a alguien, pásale por otro medio (WhatsApp, por ejemplo) el nombre del canal y la clave.
-Un canal existe mientras haya alguien dentro. Cuando sale la última persona, el canal y su clave desaparecen; para volver a usarlo hay que crearlo de nuevo.
-Si dos personas entran con el mismo nombre, el servidor añade (2), (3)… para distinguirlas.
-Desconectar te saca del canal.
-Al abrir la app aparece una pantalla de bienvenida con el botón Seguir (se salta si ya estás dentro de un canal).
-Estas funciones viven en el Worker de Cloudflare: después de actualizarlo hay que ejecutar Deploy Cloudflare Worker y luego Build APK.
-Cómo funciona
-Audio: PCM 16 kHz mono comprimido con G.711 µ-law (≈128 kbps), en paquetes de 40 ms.
-Un solo hablante por canal a la vez: si alguien habla, tu botón suena "ocupado". Turno máximo de 60 s; si el hablante queda colgado (sin audio 3 s) otro puede tomar el turno.
-Servicio en primer plano: sigue conectado con la pantalla apagada (se ve una notificación fija).
-Reconexión automática si se cae la red.
-Tecla Volumen − como PTT: opcional, funciona solo con la app abierta.
-Siguientes mejoras posibles
-Códec Opus (menos datos móviles).
-Cuentas y canales privados.
-PTT con la pantalla apagada vía auricular Bluetooth / servicio de accesibilidad.
-Mensajes de voz grabados e historial.
-Novedades de Wavko 2.3 (mensajes de voz, push y chat)
-Mensajes de voz: en Amigos, mantén pulsado el micrófono de un amigo (máx. 20 s) y suelta para enviar. Le llega a su bandeja "Mensajes de voz" (se guardan 7 días, máx. 30) aunque esté sin conexión. Solo entre amigos y respetando los bloqueos. No se puede grabar mientras estás dentro de un canal.
-Chat de texto dentro del canal (botón Chat arriba a la derecha). En canales con clave el texto va cifrado igual que el audio. No se guarda: se borra al salir.
-Notificaciones push (opcionales, con Firebase): avisan de una invitación o de un mensaje de voz con la app cerrada. Sin Firebase todo lo demás funciona; solo se avisa a los amigos que están en línea.
-Activar las notificaciones push (opcional, una sola vez)
-En https://console.firebase.google.com crea un proyecto (gratis) y añade una app Android con el nombre de paquete app.wavko.
-Descarga google-services.json y pega todo su contenido en un secret de GitHub llamado GOOGLE_SERVICES_JSON.
-En Firebase: Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada. Pega el JSON completo en un secret de GitHub llamado FCM_SERVICE_ACCOUNT.
-Ejecuta Deploy Cloudflare Worker y después Build APK.
-Orden para actualizar
-Primero Deploy Cloudflare Worker y luego Build APK. Todos deben actualizar la app (el cifrado de 2.2 no es compatible con versiones anteriores).
-Novedades de Wavko 2.2 (seguridad y cuentas)
-Cuenta real: al abrir la app por primera vez se crea una cuenta en tu servidor (conserva el código de amigo que ya tenías). Te muestra una clave de recuperación de 20 caracteres: guárdala. Si cambias de teléfono o reinstalas, en la pantalla de bienvenida o en Perfil → Recuperar otra cuenta entras con tu código + esa clave. Recuperar la cuenta cierra la sesión de los demás teléfonos.
-Solicitudes de amistad: añadir un código envía una solicitud; la otra persona la acepta, la rechaza o la bloquea. Solo los amigos aceptados ven tu estado ("en línea" / "en un canal") y pueden invitarte. Si ambos se envían solicitud, quedan como amigos al instante. Tus amigos anteriores se envían como solicitudes automáticamente.
-Bloquear: desde Amigos, desde una solicitud o tocando a alguien en un canal. Quien bloqueas no puede enviarte solicitudes ni invitaciones y no oyes su voz en los canales. Lista de bloqueados y botón Desbloquear en Ajustes.
-Expulsar: el que crea el canal es el dueño; toca a un participante → Expulsar del canal. Queda vetado (por cuenta, o por IP si no tenía cuenta) hasta que el canal se vacíe. Si el dueño se va, el participante más antiguo hereda el cargo.
-Límite de intentos de clave: 5 claves de canal incorrectas seguidas bloquean 5 minutos a esa IP/cuenta en ese canal.
-Cifrado de extremo a extremo en canales con clave: del texto de la clave se derivan dos valores distintos (PBKDF2): una prueba que se manda al servidor y una clave AES-256-GCM con la que se cifra el audio, que nunca sale del teléfono. El servidor puede comprobar la clave pero no puede escuchar el canal. Un canal sin clave no se cifra. Límite: si invitas a un amigo desde la app, la clave pasa por tu servidor dentro de la invitación; si necesitas privacidad estricta, compártela por otro medio.
-Orden para actualizar
-Actions → Deploy Cloudflare Worker (crea las cuentas: migración v3) y espera a que termine.
-Actions → Build APK. Todos los del canal deben tener esta versión (los cambios del cifrado no son compatibles con la anterior).
-Novedades de Wavko 2.1
-Invitar amigos a tu canal: en Amigos, el botón Invitar aparece junto a cada amigo en línea cuando estás en un canal. Le llega un aviso (en pantalla, o como notificación si estás en un canal con la app en segundo plano). Solo se entrega si el amigo también te tiene en su lista. La invitación lleva la clave del canal.
-Segundo plano: aviso (una sola vez) y sección en Ajustes para quitar la optimización de batería, con enlace a la guía de tu marca (dontkillmyapp.com).
-Audio HD (Opus, experimental): Ajustes → Audio HD. Usa el códec Opus del sistema (Android 10+). Desactivado por defecto; si el teléfono no lo soporta se usa el audio normal. Todos los del canal deben tener esta versión: una versión antigua oiría ruido.
-Tema claro / oscuro / del sistema, 16 skins, animación al cambiar de pestaña.
-Canales recientes y favoritos en la pestaña Canales (mantén pulsado para marcar ★).
-Español e inglés (según el idioma del teléfono).
-Se eliminó el servidor Node.js alternativo: solo se mantiene el de Cloudflare.
-Novedades de Wavko 2.0
-Pestañas: Canales, Amigos, Perfil y Ajustes (menú inferior).
-Amigos: cada instalación tiene un código de 6 caracteres; al añadirse ven si el otro está en línea o en un canal. Quien tenga tu código puede ver tu estado.
-Perfil: nombre y avatar de walkie-talkie con skins; se ven en las listas de participantes y de amigos.
-Ajustes: servidor, clave del servidor y "Volumen − como PTT (app abierta)".
-Widget "Toca para hablar": un toque empieza a transmitir y otro termina (Android no permite "mantener pulsado" en widgets). En la pantalla de bloqueo depende del teléfono; la notificación trae el botón Hablar / Parar.
-Orden para actualizar
-Actions → Deploy Cloudflare Worker (añade las invitaciones).
-Actions → Build APK e instala wavko.apk (misma app app.wavko: se actualiza encima).
-Nota: el Worker sigue llamándose voxgo para no cambiar la dirección del servidor.
+Identificador de tu cuenta Cloudflare.
+ACCESS_KEY
+Clave de acceso opcional y recomendada.
+3. Desplegar el servidor
+Una vez configurados los secretos:
+Accede a la pestaña Actions.
+Selecciona Deploy Cloudflare Worker.
+Pulsa Run workflow.
+El despliegue también se ejecutará automáticamente con cada actualización enviada a la rama main.
+El servidor quedará disponible en:
+wss://voxgo.<tu-subdominio>.workers.dev
+Esta será la dirección que utilizará la aplicación Android en el campo Servidor.
+⚡ Arquitectura del servidor
+Wavko utiliza un Durable Object por canal, implementado mediante la API de hibernación de Cloudflare.
+Cuando un canal permanece en silencio, no consume cómputo de forma continua.
+Las conexiones WebSocket permanecen abiertas.
+Los mensajes entrantes por WebSocket se contabilizan en una proporción de 20:1 como requests.
+Consulta los límites vigentes del plan gratuito en la documentación oficial de Cloudflare.
+🧪 Ejecutar el servidor localmente
+cd cloudflare
+npm install
+npx wrangler dev
+En la aplicación Android, configura:
+ws://IP-DE-TU-PC:8787
+📱 Compilar la aplicación Android
+GitHub Actions permite generar el APK automáticamente sin necesidad de compilar manualmente desde Android Studio.
+Generación del APK
+Realiza un commit y envíalo a la rama main.
+Accede a Actions → Build APK.
+Busca la sección Artifacts.
+Descarga el archivo wavko-apk.
+Dentro del ZIP encontrarás wavko.apk.
+También puedes iniciar la compilación manualmente mediante Run workflow.
+📦 Publicar una versión en Releases
+Para publicar una versión etiquetada:
+git tag v1.0
+git push --tags
+El APK aparecerá en la sección Releases de GitHub, permitiendo descargarlo directamente desde el teléfono.
+El APK generado es una versión debug firmada automáticamente, suficiente para uso propio.
+Configuración predeterminada
+La aplicación ya incluye el siguiente servidor:
+wss://voxgo.pedroxhile.workers.dev
+Puedes modificarlo desde el campo Servidor de la aplicación.
+Solo necesitas seleccionar un canal (por ejemplo, general) e introducir tu nombre.
+Variables opcionales
+Puedes personalizar la compilación desde:
+Settings → Secrets and variables → Actions → Variables
+Variable
+Función
+WAVKO_SERVER
+Sustituye la dirección del servidor predeterminado.
+ACCESS_KEY
+Precarga la clave de acceso en la aplicación.
+⚠️ Una clave precargada queda incluida dentro del APK. No compartas ese APK con personas que no deban tener acceso a ella.
+🔐 Canales y claves
+Wavko permite crear canales de comunicación y protegerlos mediante una contraseña.
+Funcionalidades
+Crear canal: eliges un nombre libre y, opcionalmente, una clave. Te conviertes en el primer participante.
+Unirme a canal: introduces el nombre del canal y la clave correspondiente.
+Invitaciones: puedes compartir el nombre y la clave mediante WhatsApp u otro medio.
+Eliminación automática: un canal existe mientras haya participantes conectados. Cuando sale la última persona, desaparece junto con su clave.
+Nombres duplicados: si dos personas utilizan el mismo nombre, el servidor añade automáticamente (2), (3) y así sucesivamente.
+Desconectar: permite salir del canal.
+Pantalla de bienvenida: al abrir la aplicación aparece una pantalla con el botón Seguir. Se omite si ya estás dentro de un canal.
+🔄 Actualización de funciones
+Las funcionalidades de los canales se gestionan desde el Worker de Cloudflare.
+Después de actualizarlo, ejecuta:
+Deploy Cloudflare Worker
+Build APK
+⚙️ Cómo funciona
+🎧 Sistema de audio
+Audio PCM de 16 kHz en mono.
+Compresión G.711 µ-law.
+Bitrate aproximado de 128 kbps.
+Paquetes de audio de 40 ms.
+🎙️ Push-to-Talk
+Un solo participante puede hablar por canal a la vez.
+Cuando alguien está hablando, el botón de los demás indica que está ocupado.
+Tiempo máximo de transmisión: 60 segundos.
+Si el hablante queda conectado sin transmitir audio durante 3 segundos, otro participante puede tomar el turno.
+📲 Funcionamiento en segundo plano
+Servicio en primer plano.
+Conexión mantenida con la pantalla apagada.
+Notificación permanente mientras permanece conectado.
+Reconexión automática cuando se pierde la conexión de red.
+Tecla Volumen − como botón PTT opcional, únicamente mientras la aplicación está abierta.
+✨ Novedades de Wavko 2.3
+💬 Mensajes de voz, notificaciones y chat
+Esta versión incorpora nuevas herramientas para mejorar la comunicación entre amigos y participantes de los canales.
+🎤 Mensajes de voz
+En la sección Amigos, mantén pulsado el micrófono de un amigo para grabar.
+Duración máxima: 20 segundos.
+Al soltar el botón, el mensaje se envía automáticamente.
+Los mensajes llegan a la bandeja Mensajes de voz, incluso si el destinatario está desconectado.
+Se conservan durante 7 días, con un máximo de 30 mensajes.
+Funcionan exclusivamente entre amigos y respetan los bloqueos.
+No es posible grabar mientras estás dentro de un canal.
+💬 Chat de texto
+Chat integrado dentro de cada canal.
+Acceso mediante el botón Chat, ubicado en la parte superior derecha.
+En canales protegidos con contraseña, los mensajes se cifran igual que el audio.
+Los mensajes no se almacenan permanentemente: se eliminan al salir del canal.
+🔔 Notificaciones push
+Notificaciones opcionales mediante Firebase para recibir avisos cuando:
+Alguien te envía una invitación.
+Recibes un mensaje de voz.
+Con Firebase puedes recibir notificaciones incluso cuando la aplicación está cerrada.
+Sin Firebase, el resto de las funciones continúa funcionando. Únicamente se notificará a los amigos que estén conectados.
+Configurar notificaciones push
+La configuración se realiza una sola vez.
+Accede a Firebase Console.
+Crea un proyecto gratuito.
+Añade una aplicación Android con el nombre de paquete:
+app.wavko
+Descarga el archivo google-services.json.
+Copia su contenido completo en un secreto de GitHub llamado:
+GOOGLE_SERVICES_JSON
+En Firebase, accede a:
+Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada
+Copia el JSON completo en otro secreto de GitHub:
+FCM_SERVICE_ACCOUNT
+Ejecuta los siguientes workflows:
+Deploy Cloudflare Worker
+Build APK
+🔄 Orden de actualización
+Primero despliega el Worker y después compila el APK.
+⚠️ Todos los usuarios deben actualizar la aplicación. El cifrado introducido en la versión 2.2 no es compatible con versiones anteriores.
+🔒 Novedades de Wavko 2.2
+Seguridad, cuentas y privacidad
+Esta versión incorpora un sistema de cuentas, solicitudes de amistad, bloqueo de usuarios y cifrado de extremo a extremo en canales protegidos.
+👤 Cuentas de usuario
+Al abrir la aplicación por primera vez, se crea una cuenta en el servidor.
+Se conserva el código de amigo existente.
+La aplicación genera una clave de recuperación de 20 caracteres.
+Es importante guardar esta clave en un lugar seguro.
+Si cambias de teléfono o reinstalas la aplicación, puedes recuperar tu cuenta mediante tu código y clave de recuperación.
+La recuperación cierra las sesiones de los demás teléfonos.
+🤝 Solicitudes de amistad
+Añadir un código de amigo envía una solicitud.
+El destinatario puede aceptar, rechazar o bloquear.
+Solo los amigos aceptados pueden ver tu estado.
+Los estados disponibles son En línea y En un canal.
+Los amigos aceptados pueden enviarte invitaciones.
+Si dos personas se envían solicitudes mutuamente, se convierten en amigos automáticamente.
+Los amigos anteriores se convierten automáticamente en solicitudes.
+🚫 Bloqueo de usuarios
+Puedes bloquear personas desde:
+La sección Amigos.
+Una solicitud de amistad.
+El perfil de un participante dentro de un canal.
+Los usuarios bloqueados:
+No pueden enviarte solicitudes.
+No pueden enviarte invitaciones.
+No puedes escuchar su voz en los canales.
+La lista de bloqueados y el botón Desbloquear están disponibles en Ajustes.
+👑 Administración de canales
+La persona que crea el canal se convierte en su propietario.
+El propietario puede seleccionar a un participante y utilizar Expulsar del canal.
+El usuario expulsado queda vetado hasta que el canal se vacíe.
+El bloqueo se realiza mediante la cuenta o, si no tiene cuenta, mediante la dirección IP.
+Si el propietario abandona el canal, el participante más antiguo hereda automáticamente el cargo.
+🛡️ Protección contra intentos de contraseña
+Se permiten hasta 5 intentos incorrectos consecutivos.
+Al superar ese límite, la IP o cuenta queda bloqueada durante 5 minutos para ese canal.
+🔐 Cifrado de extremo a extremo
+Los canales protegidos mediante
